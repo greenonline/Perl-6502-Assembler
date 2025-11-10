@@ -3,7 +3,7 @@ An "assembler" for 6502 written in Perl
 
 This is probably the most pointless tool, a 6502 assembly code parser, written in Perl. You can't really call it an assembler, because, whle it *does* assemble the code, it can't produce any binaries, only the hex code.
 
-I only wrote it as I had become fasinated by the 6502 assembler written in BASIC, by Mark Zimmermann, published in Personal Computing Decemeber 1978. I had intended just to "deconstruct" the Zimmermann engine into pseudo code and a flowchart, but then I started writing a Perl script in parallel, which eventually took on a life of its own and the pseudo code and flowchart never got finished.
+I only wrote it as I had become fascinated by the 6502 assembler written in BASIC, by Mark Zimmermann, published in Personal Computing Decemeber 1978. I had intended just to "deconstruct" the Zimmermann engine into pseudo code and a flowchart, but then I started writing a Perl script in parallel, which eventually took on a life of its own and the pseudo code and flowchart never got finished.
 
 One *sort of* useful thing that it *does* do is to display the number of cycles per instruction. So there is that, at least, I guess.
 
