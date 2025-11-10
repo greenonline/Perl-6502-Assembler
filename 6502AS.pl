@@ -342,7 +342,7 @@ if ($opt_h){
   print "             a       - address              (Default: 826/\$033A)\n";
 #  print "             d       - decimal output       (0-255)\n";
   print "             h       - help\n";
-  print "             h       - lowercase hex output (00-ff)\n";
+  print "             l       - lowercase hex output (00-ff)\n";
   print "             q       - quiet\n";
   print "             u       - uppercase hex output (00-FF)\n";
   print "             w       - suppress warnings\n";
