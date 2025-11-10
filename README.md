@@ -89,3 +89,8 @@ ADD1 = 33025
 END
 
 ```
+
+## See also
+
+ - [PET_Machine_Language_Guide](https://github.com/greenonline/PET_Machine_Language_Guide)
+ - [Perl BASIC tool Kit](https://github.com/greenonline/Perl-BASIC-Tool-Kit)
