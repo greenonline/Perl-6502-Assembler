@@ -32,7 +32,13 @@
 # Multiple files? `foreach my $file (@ARGV)`, from https://www.perlmonks.org/?node_id=65453
 #
 # Print timings - DONE!
+#
 # Print branch alternative timings as well
+#
+# decimal
+#
+# add option for (non-label input) labels, so that stdin can be used.
+#
 
 #
 # Use
@@ -46,11 +52,12 @@ use Getopt::Std;
 # Flags
 #
 
-my $flg_hex = 1;
+my $flg_hex = 0;
 my $flg_dec = 0;
 my $flg_quiet = 0;
 my $flg_upper = 0;
 my $flg_debug = 0;
+my $flg_no_labels = 0;
 
 #
 # Prefixes/Suffixes
@@ -333,16 +340,18 @@ my $timing;
 my $label = "";
 my $address=826;    # 826 - 1017 for the Commodore PET
 
-our ($opt_a, $opt_d, $opt_h, $opt_l, $opt_q, $opt_u, $opt_w, $opt_x);
-getopts('adhlquwx');
+our ($opt_a, $opt_d, $opt_h, $opt_l, $opt_n, $opt_q, $opt_u, $opt_w, $opt_x);
+getopts('adhlnquwx');
 
 if ($opt_h){
   print "\nHelp:\n";
-  print "        prog.pl [adhlquwx] [<filename>]\n\n";
+  print "        prog.pl [adhlnquwx] [<filename>]\n\n";
   print "             a       - address              (Default: 826/\$033A)\n";
 #  print "             d       - decimal output       (0-255)\n";
+  print "             d       - debug\n";
   print "             h       - help\n";
   print "             l       - lowercase hex output (00-ff)\n";
+  print "             n       - no labels used";
   print "             q       - quiet\n";
   print "             u       - uppercase hex output (00-FF)\n";
   print "             w       - suppress warnings\n";
@@ -350,10 +359,11 @@ if ($opt_h){
   exit;
 }
 
-#$debug=$opt_d               if $opt_d;
+$flg_debug=$opt_d                if $opt_d;
 #$flg_no_warn=$opt_w         if $opt_w;
+$flg_no_labels=$opt_n        if $opt_n;
 $flg_hex=$opt_x              if $opt_x;
-$flg_dec=$opt_d              if $opt_d;
+#$flg_dec=$opt_d             if $opt_d;
 $flg_quiet=$opt_q            if $opt_q;
 $flg_upper=$opt_u            if $opt_u;
 $flg_upper=!$opt_l           if $opt_l;
@@ -418,204 +428,196 @@ sub findlabelswithslurp{
 
 # From https://stackoverflow.com/a/30086865
 sub findlabelswithlocal{
-    local @ARGV = @ARGV;
-    while (<>){
-        my $line = $_;
-        my $original_line_length = length($line);
-        #print "Pass 1: $line";
-        chomp $line;
-        print "Pass 1: $line";
+  local @ARGV = @ARGV;
+  while (<>){
+    my $line = $_;
+    my $original_line_length = length($line);
+    chomp $line;
+    print "Pass 1: $line";
 
-# No assembly or coding, just the detection of menonics, instruction type and num_bytes
-# Will also need to detect ORG and variables (num_byes=0) and DC (1), DB (1), DW (2)
-# Start
+    # No assembly or coding, just the mnenonic detection, instruction type and num_bytes
+    # Start
 
-  if ($line =~ /end/i) {                                    # END
-    $num_bytes = 0;
-    last;
-  } elsif ($line =~ /(\w*) = (\$?\w+)/i) {                  # Variables
-    $num_bytes=0;   # not needed?
-    $variables{$1} = $2;
-    #$num_bytes=0;   # not needed?
-  } elsif ($line =~ /d[bc]\s*(\$?\w+)/i) {                  # DC/DB
-    $num_bytes = 1;
-  } elsif ($line =~ /dw\s*(\$?\w+)/i) {                     # DW
-    $num_bytes = 2;
-  } elsif ($line =~ /org\s*(\$?\w+)/i) {                    # ORG
-    $num_bytes=0;   # not needed?
-    $address=$1;
-    if ($address =~ s/^\$(\w+)/$1/){
-      $address = hex $address;
-    }
-  } elsif($line =~ /(.+)\s+(.+)/ || $line =~ /(.+)/){       # A real line of assembly code
-    my $mnemonic = lc $1;
-    my $operand = $2;
-    if (exists $categories{$mnemonic}) {
-      $category = $categories{$mnemonic};
-    } else {
-      if ($line!~/^(\w+)\s(.*)/){
-        die "Unknown mnemonic!";
-      } else {                                              # check for LABEL here
-        addlabel($1);
-        print $prefix_debug."Label found: $1\n" if $flg_debug;
-        $line=~s/^(\w+)\s(.*)/$2/;                          # Strip out label 
-        if($line =~ /(.+)\s+(.+)/ || $line =~ /(.+)/){      # and run it again
-          $mnemonic = lc $1;
-          $operand = $2;
-          if (exists $categories{$mnemonic}) {
-            $category = $categories{$mnemonic};
-          } else {
-            die "Unknown mnemonic!";
+    if ($line =~ /end/i) {                                    # END
+      $num_bytes = 0;
+      last;
+    } elsif ($line =~ /(\w*) = (\$?\w+)/i) {                  # Variables
+      $num_bytes=0;   # not needed?
+      $variables{$1} = $2;
+      #$num_bytes=0;   # not needed?
+    } elsif ($line =~ /d[bc]\s*(\$?\w+)/i) {                  # DC/DB
+      $num_bytes = 1;
+    } elsif ($line =~ /dw\s*(\$?\w+)/i) {                     # DW
+      $num_bytes = 2;
+    } elsif ($line =~ /org\s*(\$?\w+)/i) {                    # ORG
+      $num_bytes=0;   # not needed?
+      $address=$1;
+      if ($address =~ s/^\$(\w+)/$1/){
+        $address = hex $address;
+      }
+    } elsif($line =~ /(.+)\s+(.+)/ || $line =~ /(.+)/){       # A real line of assembly code
+      my $mnemonic = lc $1;
+      my $operand = $2;
+      if (exists $categories{$mnemonic}) {
+        $category = $categories{$mnemonic};
+      } else {
+        if ($line!~/^(\w+)\s(.*)/){
+          die "Unknown mnemonic!";
+        } else {                                              # check for LABEL here
+          addlabel($1);
+          print $prefix_debug."Label found: $1\n" if $flg_debug;
+          $line=~s/^(\w+)\s(.*)/$2/;                          # Strip out label 
+          if($line =~ /(.+)\s+(.+)/ || $line =~ /(.+)/){      # and run it again
+            $mnemonic = lc $1;
+            $operand = $2;
+            if (exists $categories{$mnemonic}) {
+              $category = $categories{$mnemonic};
+            } else {
+              die "Unknown mnemonic!";
+            }
           }
         }
       }
-    }
-    print $prefix_debug."category $category$suffix_debug" if $flg_debug;
+      print $prefix_debug."category $category$suffix_debug" if $flg_debug;
 
-    $address += $num_bytes;
-    #my $tmp_space = (" " x (20 - length($line)));
-    my $tmp_space = (" " x (20 - $original_line_length));
-    print $tmp_space." @ ";
-    print_address($address);
+      $address += $num_bytes;
+      #my $tmp_space = (" " x (20 - length($line)));
+      my $tmp_space = (" " x (20 - $original_line_length));
+      print $tmp_space." @ ";
+      print_address($address);
 
-    #
-    # Zimmermann engine (truncated) - num_bytes only (start)
-    #
+      #
+      # Zimmermann engine (truncated) - num_bytes only (start)
+      #
 
-    if ($category == 0) {
-      $num_bytes = 1;
-      # (code removed)
-    } elsif ($operand =~ /^[Aa]$/) {
-      if ($category == 3) {
-        die "No! Can not be CATEGORY 3 FOR ACCUMULATOR OPERAND!";
-      } else {
+      if ($category == 0) {
         $num_bytes = 1;
         # (code removed)
-      }
-      # (code removed)
-    } elsif ( $operand =~ /^#(.+)/) {
-      # 221 REM HANDLE "IMMEDIATE" INSTRUCTIONS HERE
-      $num_bytes = 2;
-      # (code removed)
-    } elsif ( $operand =~ /^\((.+)/) {
-      # 231 REM CHECK FOR VARIOUS INDIRECT INSTRUCTIONS
-      if ( $operand =~ /(.+)\),Y$/ ) {
-      # 233 REM IT IS AN "(INDIRECT),Y"
-        $num_bytes = 2;
-        # (code removed)
-      } elsif ( $operand =~ /(.+),X\)$/ ) {
-        $num_bytes = 2;
-        # (code removed)
-      } elsif ( $operand =~ /(.+)\)$/ ) {
-        # 251 REM IT BETTER BE A JMP (INDIRECT), ELSE ERROR
-        if ($category != 6){
-          die "No! Not a JMP (INDIRECT)";
+      } elsif ($operand =~ /^[Aa]$/) {
+        if ($category == 3) {
+          die "No! Can not be CATEGORY 3 FOR ACCUMULATOR OPERAND!";
         } else {
-          # 254 N=VAL(MID$(C$,2,L-2)):HI=INT(N/256):BY=3
-          $num_bytes = 3;
+          $num_bytes = 1;
           # (code removed)
         }
-      } else {
-          die "No! Not ')'";
-      }
-    } elsif ( $operand =~ /(.+),X$/ ) {
-      # 260 IF RIGHT$(C$,2)<>",X" GOTO 280
-      # TODO
-      my $number = $1;
-      $number = check4variable($number);
-      #if ($number =~ /^\$(.+)/){
-      if ($number =~ s/^\$(.+)/$1/){
-        $number = hex $number;  # convert to decimal
-                                # this makes the hex stuff below redundant
-      }
-      if ($number < 256){
-        # 265 REM HANDLE "ZERO PAGE,X" HERE
+        # (code removed)
+      } elsif ( $operand =~ /^#(.+)/) {
+        # 221 REM HANDLE "IMMEDIATE" INSTRUCTIONS HERE
         $num_bytes = 2;
         # (code removed)
-      } else {
-        $num_bytes = 3;
-        # (code removed)
-      }
-    } elsif ( $operand =~ /(.+),Y$/ ) {
-      # 280 IF RIGHT$(C$,2)<>",Y" GOTO 300 
-      my $number = $1;
-      $number = check4variable($number);
-      #if ($number =~ /^\$(.+)/){
-      if ($number =~ s/^\$(.+)/$1/){
-        $number = hex $number;  # convert to decimal
-                                # this makes the hex stuff below redundant
-      }
-      if ($number < 256){
-        # 285 REM HANDLE ZERO PAGE,Y HERE
-        $num_bytes = 2;
-        # (code removed)
-      } else {
-        $num_bytes = 3;
-        # (code removed)
-      }
-    } else {
-      # 300 N=VAL(C$):REM NOW, FOR NUMERICAL OPERANDS
-      my $number = $operand;  # Not really needed??? I think it is.
-      $number = check4variable($number);
-      #if ($number =~ /^\$(.+)/){
-      if ($number =~ s/^\$(.+)/$1/){
-        $number = hex $number;  # convert to decimal
-                                # this makes the hex stuff below redundant
-      }
-      if ($category != 8) {
+      } elsif ( $operand =~ /^\((.+)/) {
+        # 231 REM CHECK FOR VARIOUS INDIRECT INSTRUCTIONS
+        if ( $operand =~ /(.+)\),Y$/ ) {
+        # 233 REM IT IS AN "(INDIRECT),Y"
+          $num_bytes = 2;
+          # (code removed)
+        } elsif ( $operand =~ /(.+),X\)$/ ) {
+          $num_bytes = 2;
+          # (code removed)
+        } elsif ( $operand =~ /(.+)\)$/ ) {
+          # 251 REM IT BETTER BE A JMP (INDIRECT), ELSE ERROR
+          if ($category != 6){
+            die "No! Not a JMP (INDIRECT)";
+          } else {
+            # 254 N=VAL(MID$(C$,2,L-2)):HI=INT(N/256):BY=3
+            $num_bytes = 3;
+            # (code removed)
+          }
+        } else {
+            die "No! Not ')'";
+        }
+      } elsif ( $operand =~ /(.+),X$/ ) {
+        # 260 IF RIGHT$(C$,2)<>",X" GOTO 280
+        # TODO
+        my $number = $1;
+        $number = check4variable($number);
+        #if ($number =~ /^\$(.+)/){
+        if ($number =~ s/^\$(.+)/$1/){
+          $number = hex $number;  # convert to decimal
+                                  # this makes the hex stuff below redundant
+        }
         if ($number < 256){
+          # 265 REM HANDLE "ZERO PAGE,X" HERE
           $num_bytes = 2;
           # (code removed)
         } else {
-          # 330 HI=INT(N/256):POKE 999,HI:POKE998,N-256*HI:BY=3
+          $num_bytes = 3;
+          # (code removed)
+        }
+      } elsif ( $operand =~ /(.+),Y$/ ) {
+        # 280 IF RIGHT$(C$,2)<>",Y" GOTO 300 
+        my $number = $1;
+        $number = check4variable($number);
+        #if ($number =~ /^\$(.+)/){
+        if ($number =~ s/^\$(.+)/$1/){
+          $number = hex $number;  # convert to decimal
+                                  # this makes the hex stuff below redundant
+        }
+        if ($number < 256){
+          # 285 REM HANDLE ZERO PAGE,Y HERE
+          $num_bytes = 2;
+          # (code removed)
+        } else {
           $num_bytes = 3;
           # (code removed)
         }
       } else {
-        # 340 N=N-AD-2:IF N<-128 OR N>127 THEN PRINT "CAN'T BRANCH";N:GOTO 100
-        # Do branches
-        $number = $number - $address - 2;
-        print $prefix_debug."number: $number address: $address$suffix_debug" if $flg_debug;
-
-        if ($number < -128 || $number > 127) {
-          die "No! CAN'T BRANCH $number!";                   # 3 - 826 - 2
-        } elsif ($number < 0){
-          $number += 256;
+        # 300 N=VAL(C$):REM NOW, FOR NUMERICAL OPERANDS
+        my $number = $operand;  # Not really needed??? I think it is.
+        $number = check4variable($number);
+        #if ($number =~ /^\$(.+)/){
+        if ($number =~ s/^\$(.+)/$1/){
+          $number = hex $number;  # convert to decimal
+                                  # this makes the hex stuff below redundant
         }
-        $num_bytes = 2;
-        # (code removed)
+        if ($category != 8) {
+          if ($number < 256){
+            $num_bytes = 2;
+            # (code removed)
+          } else {
+            # 330 HI=INT(N/256):POKE 999,HI:POKE998,N-256*HI:BY=3
+            $num_bytes = 3;
+            # (code removed)
+          }
+        } else {
+          # 340 N=N-AD-2:IF N<-128 OR N>127 THEN PRINT "CAN'T BRANCH";N:GOTO 100
+          # Do branches
+          $number = $number - $address - 2;
+          print $prefix_debug."number: $number address: $address$suffix_debug" if $flg_debug;
+
+          if ($number < -128 || $number > 127) {
+            die "No! CAN'T BRANCH $number!";                   # 3 - 826 - 2
+          } elsif ($number < 0){
+            $number += 256;
+          }
+          $num_bytes = 2;
+          # (code removed)
+        }
       }
     }
-  }
     print "\n";
-    
-    #print_line(); # uninitialised and unnecessary as redundant (line printed above)
-
+      
     #
     # Zimmermann engine (truncated) - num_bytes only (end)
     #
 
+    # End
+    # No assembly or coding, just the mnenonic detection, instruction type and num_bytes
+  }
+  #
+  # Print labels here
+  #
 
-# End
-# No assembly or coding, just the detection of menonics, instruction type and num_bytes
-# Will also need to detect ORG and variables (num_byes=0) and DC (1), DB (1), DW (2)
+  print "\n\nLabels found:\n";
+  # https://www.perlmonks.org/?node_id=560981
+  foreach (sort keys %labels) {
+    #print "$_ : $labels{$_}\n";
+    print "$_ : ";
+    print_address($labels{$_});
+    print "\n";
+  }
 
-
-    }
-    #
-    # Print labels here
-    #
-
-    print "\n\nLabels found:\n";
-    # https://www.perlmonks.org/?node_id=560981
-    foreach (sort keys %labels) {
-      #print "$_ : $labels{$_}\n";
-      print "$_ : ";
-      print_address($labels{$_});
-      print "\n";
-    }
-
-    print "\n\n";
+  print "\n\n";
 }
 
 # Check if mnemonic is actually a label
@@ -742,7 +744,7 @@ sub print_timing {
 
 #findlabelswithrewind();  # will not work as you cn't rewind stdin, obviously!
 #findlabelswithslurp();   # Might work
-findlabelswithlocal();   # Seems to work, for a file at least.
+findlabelswithlocal() if !$flg_no_labels;   # Seems to work, for a file at least.
 
 while(<>){
 
@@ -754,12 +756,8 @@ while(<>){
     last;
   } elsif ($line =~ /(\w*) = (\$?\w+)/i) {                     # Variables
 
-=pod
-
-    $variables{$1} = $2;
+    $variables{$1} = $2 if $flg_no_labels;
     #$num_bytes=0;   # not needed?
-
-=cut
 
     if ($flg_upper){
       print (uc $line) if !$flg_quiet;
@@ -825,7 +823,6 @@ while(<>){
       print (lc $line) if !$flg_quiet;
     }
   } elsif($line =~ /(.+)\s+(.+)/ || $line =~ /(.+)/){       # A real line of assembly code
-    my $original_line = $line;   # Save the line, in case a label gets stripped
     my $mnemonic = lc $1;
     my $operand = $2;
     if (exists $categories{$mnemonic}) {
@@ -1396,7 +1393,6 @@ while(<>){
 =cut
 
     # Print line, timing with chomp
-    #$line = $original_line;
     chomp $line;
     print_line();
     print_timing();
