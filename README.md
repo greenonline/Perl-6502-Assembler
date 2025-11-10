@@ -27,7 +27,7 @@ Example output (help):
 % perl 6502AS.pl  -h                              
 
 Help:
-        prog.pl [adhlquwx] [<filename>]
+        prog.pl [adhlnquwx] [<filename>]
 
              a       - address              (Default: 826/$033A)
              d       - debug
