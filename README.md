@@ -30,8 +30,10 @@ Help:
         prog.pl [adhlquwx] [<filename>]
 
              a       - address              (Default: 826/$033A)
+             d       - debug
              h       - help
-             h       - lowercase hex output (00-ff)
+             l       - lowercase hex output (00-ff)
+             n       - no labels
              q       - quiet
              u       - uppercase hex output (00-FF)
              w       - suppress warnings
