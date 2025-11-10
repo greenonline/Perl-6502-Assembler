@@ -87,8 +87,22 @@ ADD1 = 33025
 0340   23                      DC $23
 0341   FF FF                   DW $FFFF
 END
-
 ```
+
+## Improvements
+
+Yes, the code could be improved: the subroutines that exist could be used more, and; some more subroutines could be written to replace repetitive/repeated code blocks. However, the script works as is, and that's good enough (for the moment, until I get more time).
+
+## Notes on the `-n` (no labels) option
+
+The main reason for the `-n` option is to restrict the parser to just one pass – the first pass (which looks for labels) is omitted, and only the second pass is used. Why, would you need to omit the first pass? Because, if you do not specify an input file and rely on stdin instead, either via a pipe or manual keyboard input, then multiple passes are not possible (yet) – the script does not (yet) "slurp" in the entire file (for posssibly non-existant memory reasons).
+
+In short, 
+
+ - If you use the `-n` option on a file that has labels, then errors will occur.
+ - You can omit the `-n` option if your source file has no labels. The first pass will just not find any labels, and continue assembling your label-free source code regardless.
+ - You can enter code on stdin, but you will have to use the `-n` option – for no labels – and not use labels in the source code.
+
 
 ## See also
 
