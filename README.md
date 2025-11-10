@@ -21,9 +21,29 @@ The supported list of "tokens" is:
 
 The error checking is not extensive, but dodgy mnemonics should be detected.
 
-Example output
+Example output (help):
 
 ```none
+% perl 6502AS.pl  -h                              
+
+Help:
+        prog.pl [adhlquwx] [<filename>]
+
+             a       - address              (Default: 826/$033A)
+             h       - help
+             h       - lowercase hex output (00-ff)
+             q       - quiet
+             u       - uppercase hex output (00-FF)
+             w       - suppress warnings
+             x       - hex output           (00-FF)
+
+```
+
+Example output (assembler):
+
+```none
+% perl 6502AS.pl  -x  -u testfile_6502as_extra.txt
+
 Labels found:
 LABEL1 : 0326   
 MORE : 032B   
