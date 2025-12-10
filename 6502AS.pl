@@ -39,6 +39,8 @@
 #
 # add option for (non-label input) labels, so that stdin can be used.
 #
+# Print number of bytes (even if obvious)
+#
 
 #
 # Use
@@ -231,6 +233,9 @@ my %baseOpCode = ( acd => 97,     # +8,+4,+20,+12,+28,+24,0,+16
 #    add 2 to cycles if branch occurs to different page
 #
 
+=pod
+
+# Without conditional timing
 my %cycles = (     acd => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
 	           and => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
     	           asl => 5,     # -3,0,+1,+1,+2
@@ -244,6 +249,66 @@ my %cycles = (     acd => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
     	           brk => 7, 
     	           bvc => 2,     # ** 
     	           bvs => 2,     # ** 
+    	           clc => 2, 
+    	           cld => 2, 
+    	           cli => 2, 
+    	           clv => 2, 
+    	           cmp => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
+    	           cpx => 2,     # 0,+1,+2 
+    	           cpy => 2,     # 0,+1,+2 
+    	           dec => 5,     # 0,+1,+1,+2 
+    	           dex => 2, 
+    	           dey => 2, 
+    	           eor => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1* 
+    	           inc => 5,     # 0,+1,+1,+2 
+    	           inx => 2, 
+    	           iny => 2, 
+    	           jmp => 3,     # 0,+2 
+    	           jsr => 6, 
+    	           lda => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1* 
+    	           ldx => 2,     # 0,+1,+2,+2,+2* 
+    	           ldy => 2,     # 0,+1,+2,+2,+2* 
+    	           lsr => 5,     # -3,0,+1,+1,+2 
+    	           nop => 2, 
+    	           ora => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1* 
+    	           pha => 3, 
+    	           php => 3, 
+    	           pla => 4, 
+    	           plp => 4, 
+    	           rol => 5,     # -3,0,+1,+1,+2 
+    	           ror => 5,     # -3,0,+1,+1,+2 
+    	           rti => 6, 
+    	           rts => 6, 
+    	           sbc => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1* 
+    	           sec => 2, 
+    	           sed => 2, 
+    	           sei => 2, 
+    	           sta => 6,     # -3,-2,-2,-1,-1,0,0 
+    	           stx => 3,     # 0,+1,+1
+    	           sty => 3,     # 0,+1,+1 
+    	           tax => 2, 
+    	           tay => 2, 
+    	           tsx => 2, 
+    	           txa => 2, 
+    	           txs => 2, 
+	           tya => 2);
+
+=cut
+
+# With conditional timing
+my %cycles = (     acd => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
+	           and => 6,     # -4,-3,-2,-2,-2*,-2*,0,-1*
+    	           asl => 5,     # -3,0,+1,+1,+2
+    	           bcc => '2+2',     # **
+    	           bcs => '2+2',     # ** 
+    	           beq => '2+2',     # ** 
+    	           bit => 3,     # 0,+1
+    	           bmi => '2+2',     # ** 
+    	           bne => '2+2',     # ** 
+    	           bpl => '2+2',     # ** 
+    	           brk => 7, 
+    	           bvc => '2+2',     # ** 
+    	           bvs => '2+2',     # ** 
     	           clc => 2, 
     	           cld => 2, 
     	           cli => 2, 
@@ -694,7 +759,9 @@ sub print_line {
   #
 
     # Print label in separate column
-    my $tmp_space = ("   " x (5 - $num_bytes));
+    my $tmp_space;
+    $tmp_space = ("   " x (5 - $num_bytes)) if $flg_hex;
+    $tmp_space = ("    " x (4 - $num_bytes)) if !$flg_hex;
     print $tmp_space;
     if ($label ne ""){
       $tmp_space = (" " x (10 - length($label)));
@@ -769,6 +836,7 @@ while(<>){
     if ($operand_byte =~ s/^\$(\w+)/$1/){
       $operand_byte = hex $operand_byte;
     }
+    $operand_byte = uc sprintf '%3d', $operand_byte;
 
     $address += $num_bytes;
     print_address($address);
@@ -790,6 +858,7 @@ while(<>){
     if ($operand_byte =~ s/^\$(\w+)/$1/){
       $operand_byte = hex $operand_byte;
     }
+    $operand_byte = uc sprintf '%3d', $operand_byte;
 
     $address += $num_bytes;
     print_address($address);
@@ -857,7 +926,8 @@ while(<>){
 
     if ($category == 0) {
       $num_bytes = 1;
-      $opcode = $baseOpCode{$mnemonic};
+      #$opcode = $baseOpCode{$mnemonic};
+      $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
       $timing = $cycles{$mnemonic};
       opcode2casehex();
       #print "$opcode\n";
@@ -882,25 +952,38 @@ while(<>){
       $num_bytes = 2;
       $operand_byte = $1;
       $operand_byte = check4variable($operand_byte);
+      #$operand_byte = uc sprintf '%3d', $operand_byte;
+
 
       if ($category == 1){
-        $opcode = $baseOpCode{$mnemonic} + 8;
+        #$opcode = $baseOpCode{$mnemonic} + 8;
+        $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 8;
         $timing = $cycles{$mnemonic} - 4;
       } elsif ($category == 4 || $category == 5){
-        $opcode = $baseOpCode{$mnemonic};
+        #$opcode = $baseOpCode{$mnemonic};
+        $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
         $timing = $cycles{$mnemonic};
       } else {
         die "No! Can not be $category,\n MUST BE CATEGORY 1, 4 or 5 FOR IMMEDIATE OPERAND!";
       }
       opcode2casehex();
       #$operand_byte =~ s/^\$(.+)/$1/;      # Strip $ from hex input
-      if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input
+      #if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input - redundant
+
+      if ($operand_byte =~ s/^\$(.+)/$1/){
+        $operand_byte = hex $operand_byte;  # convert to decimal
+                                # this makes the hex stuff below redundant
+      }
+      $operand_byte = uc sprintf '%3d', $operand_byte;
+
         if ($flg_upper){
           $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
         } else {
           $operand_byte = lc sprintf '%02x', $operand_byte if $flg_hex;
         }
-      }
+      #} else {  # This is a bit of a weird hack
+      #  $operand_byte = uc sprintf '%3d', $operand_byte;
+      #} # redundant
       #print "$opcode $operand_byte\n";
       print "$opcode $operand_byte";
       if ($flg_quiet) { print "\n";}
@@ -911,19 +994,28 @@ while(<>){
         $num_bytes = 2;
         $operand_byte = $1;
         $operand_byte = check4variable($operand_byte);
+        $operand_byte = uc sprintf '%3d', $operand_byte;
         
         if ($category == 1){
-          $opcode = $baseOpCode{$mnemonic} + 16;
+          #$opcode = $baseOpCode{$mnemonic} + 16;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic}+16;
           $timing = $cycles{$mnemonic} - 1;
           opcode2casehex();
           #$operand_byte =~ s/^\$(.+)/$1/;      # Strip $ from hex input
-          if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input
+          #if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input - redundant
+
+          if ($operand_byte =~ s/^\$(.+)/$1/){
+            $operand_byte = hex $operand_byte;  # convert to decimal
+                                # this makes the hex stuff below redundant
+          }
+          $operand_byte = uc sprintf '%3d', $operand_byte;
+
             if ($flg_upper){
               $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
             } else {
               $operand_byte = lc sprintf '%02x', $operand_byte if $flg_hex;
             }
-          }
+          #}#redundant
           #print "$opcode $operand_byte\n";
           print "$opcode $operand_byte";
           if ($flg_quiet) { print "\n";}
@@ -934,21 +1026,33 @@ while(<>){
         $num_bytes = 2;
         $operand_byte = $1;
         $operand_byte = check4variable($operand_byte);
+        $operand_byte = uc sprintf '%3d', $operand_byte;
 
         if ($category == 1){
-          $opcode = $baseOpCode{$mnemonic};
+          #$opcode = $baseOpCode{$mnemonic};
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
           $timing = $cycles{$mnemonic};
           opcode2casehex();
           #$operand_byte =~ s/^\$(.+)/$1/;      # Strip $ from hex input
-          if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input
+          #if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input -redundant
           # NOT redundant in this particular case
+          # Yes, it is... it is just weird, !~, bah!
+
+          if ($operand_byte =~ s/^\$(.+)/$1/){
+            $operand_byte = hex $operand_byte;  # convert to decimal
+                                # this makes the hex stuff below redundant
+          }
+          $operand_byte = uc sprintf '%3d', $operand_byte;
+
             #$operand_byte = sprintf '%02x', $operand_byte if $flg_hex;
             if ($flg_upper){
               $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
             } else {
               $operand_byte = lc sprintf '%02x', $operand_byte if $flg_hex;
             }
-          }    # NOT redundant in this particular case
+          #}    # NOT redundant in this particular case
+          # Yes, it is... it is just weird, !~, bah!
+
           #print "$opcode $operand_byte\n";
           print "$opcode $operand_byte";
           if ($flg_quiet) { print "\n";}
@@ -964,6 +1068,7 @@ while(<>){
           $num_bytes = 3;
           $operand_byte=$1;
           $operand_byte = check4variable($operand_byte);
+          $operand_byte = uc sprintf '%3d', $operand_byte;
 
           #if ($operand_byte =~ /^\$(.+)/){
           if ($operand_byte =~ s/^\$(.+)/$1/){
@@ -1002,7 +1107,9 @@ while(<>){
             # We have dec input
             # ... and we need to split the bytes
             $operand_byte_two = int $operand_byte/256;
+            $operand_byte_two = uc sprintf '%3d', $operand_byte_two;
             $operand_byte = $operand_byte - ($operand_byte_two * 256);
+            $operand_byte = uc sprintf '%3d', $operand_byte;
             if ($flg_upper){
               $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
               $operand_byte_two = uc sprintf '%02x', $operand_byte_two if $flg_hex;
@@ -1011,7 +1118,8 @@ while(<>){
               $operand_byte_two = lc sprintf '%02x', $operand_byte_two if $flg_hex;
             }
           #}      # redundant
-          $opcode = $baseOpCode{$mnemonic} + 32;
+          #$opcode = $baseOpCode{$mnemonic} + 32;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic}+32;
           $timing = $cycles{$mnemonic} + 2;
           opcode2casehex();
           #$operand_byte =~ s/^\$(.+)/$1/;      # Strip $ from hex input (done above)
@@ -1027,6 +1135,7 @@ while(<>){
       # TODO
       my $number = $1;
       $number = check4variable($number);
+      #$operand_byte = uc sprintf '%3d', $operand_byte;
       #if ($number =~ /^\$(.+)/){
       if ($number =~ s/^\$(.+)/$1/){
         $number = hex $number;  # convert to decimal
@@ -1037,11 +1146,13 @@ while(<>){
         $num_bytes = 2;
         $operand_byte = $number;
         $operand_byte = check4variable($operand_byte);
+        $operand_byte = uc sprintf '%3d', $operand_byte;
         if ($category == 2){
           $opcode = $baseOpCode{$mnemonic}+16;
           $timing = $cycles{$mnemonic} + 1;
         } elsif ($category == 1 || $category == 3 || $category == 5) {
-          $opcode = $baseOpCode{$mnemonic} + 20;
+          #$opcode = $baseOpCode{$mnemonic} + 20;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic}+20;
           if ($category == 1) {
             $timing = $cycles{$mnemonic} - 2;
             #$opcode = $baseOpCode{$mnemonic} + 20;
@@ -1103,7 +1214,9 @@ while(<>){
           # We have dec input
           # ... and we need to split the bytes
           $operand_byte_two = int $operand_byte/256;
+          $operand_byte_two = uc sprintf '%3d', $operand_byte_two;
           $operand_byte = $operand_byte - ($operand_byte_two * 256);
+          $operand_byte = uc sprintf '%3d', $operand_byte;
           print $prefix_debug."oprnd#1 $operand_byte oprnd#2 $operand_byte_two$suffix_debug" if $flg_debug;
           if ($flg_upper){
             $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
@@ -1115,11 +1228,13 @@ while(<>){
         #}    # redundant
         if ($category == 2){
           # I don't believe that this code is ever reached for cat 2 absolute mode
-          $opcode = $baseOpCode{$mnemonic} + 24;     # this should be +8
+          #$opcode = $baseOpCode{$mnemonic} + 24;     # this should be +8
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 24;
           $timing = $cycles{$mnemonic} + 1;
           die "This cat 2 absolute is never reached!";
         } elsif ($category == 1 || $category == 3 || $category == 5) {
-          $opcode = $baseOpCode{$mnemonic}+28;
+          #$opcode = $baseOpCode{$mnemonic}+28;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 28;
           if ($category == 1) {
             $timing = $cycles{$mnemonic} - 2;
           } elsif ($category == 3) {
@@ -1140,6 +1255,7 @@ while(<>){
       # 280 IF RIGHT$(C$,2)<>",Y" GOTO 300 
       my $number = $1;
       $number = check4variable($number);
+      $operand_byte = uc sprintf '%3d', $operand_byte;
       #if ($number =~ /^\$(.+)/){
       if ($number =~ s/^\$(.+)/$1/){
         $number = hex $number;  # convert to decimal
@@ -1149,10 +1265,12 @@ while(<>){
         # 285 REM HANDLE ZERO PAGE,Y HERE
         $num_bytes = 2;
         if ($category == 2){
-          $opcode = $baseOpCode{$mnemonic} + 16;
+          #$opcode = $baseOpCode{$mnemonic} + 16;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 16;
           $timing = $cycles{$mnemonic} + 1;
         } elsif ($category = 5) {
-          $opcode = $baseOpCode{$mnemonic} + 20;
+          #$opcode = $baseOpCode{$mnemonic} + 20;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 20;
           $timing = $cycles{$mnemonic} + 2;
         } else {
           die "Not sure! Should continue to line 289/290???!!!???"; # I don't think so...
@@ -1205,8 +1323,10 @@ while(<>){
           # We have dec input
           # ... and we need to split the bytes
           $operand_byte_two = int $operand_byte/256;
+          $operand_byte_two = uc sprintf '%3d', $operand_byte_two;
           $operand_byte = $operand_byte - ($operand_byte_two * 256);
-          if ($flg_upper){
+          $operand_byte = uc sprintf '%3d', $operand_byte;
+         if ($flg_upper){
             $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
             $operand_byte_two = uc sprintf '%02x', $operand_byte_two if $flg_hex;
           } else {
@@ -1215,10 +1335,12 @@ while(<>){
           }
         #}    # redundant
         if ($category == 1){
-          $opcode = $baseOpCode{$mnemonic}+24;
+          #$opcode = $baseOpCode{$mnemonic}+24;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 24;
           $timing = $cycles{$mnemonic} - 2;
         } elsif ($category = 5) {
-          $opcode = $baseOpCode{$mnemonic}+28;
+          #$opcode = $baseOpCode{$mnemonic}+28;
+          $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 28;
           $timing = $cycles{$mnemonic} + 2;
         } else {
           die "No!";
@@ -1233,6 +1355,7 @@ while(<>){
       # 300 N=VAL(C$):REM NOW, FOR NUMERICAL OPERANDS
       my $number = $operand;  # Not really needed??? I think it is.
       $number = check4variable($number);
+      #$operand_byte = uc sprintf '%3d', $operand_byte;
       #if ($number =~ /^\$(.+)/){
       if ($number =~ s/^\$(.+)/$1/){
         $number = hex $number;  # convert to decimal
@@ -1242,11 +1365,14 @@ while(<>){
         if ($number < 256){
           $num_bytes = 2;
           $operand_byte = $number;
+          $operand_byte = uc sprintf '%3d', $operand_byte;
           if ($category == 2 || $category == 7) {
-            $opcode = $baseOpCode{$mnemonic};
+            #$opcode = $baseOpCode{$mnemonic};
+            $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
             $timing = $cycles{$mnemonic};
           } elsif ($category == 1 || $category == 3 || $category == 4 || $category == 5) {
-            $opcode = $baseOpCode{$mnemonic} + 4;
+            #$opcode = $baseOpCode{$mnemonic} + 4;
+            $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 4;
             if ($category == 1) {
               $timing = $cycles{$mnemonic} - 3;
             } elsif ($category == 3) {
@@ -1280,6 +1406,7 @@ while(<>){
           # 330 HI=INT(N/256):POKE 999,HI:POKE998,N-256*HI:BY=3
           $num_bytes = 3;
           $operand_byte=$number;
+          $operand_byte = uc sprintf '%3d', $operand_byte;
 
 =pod
 
@@ -1312,7 +1439,9 @@ while(<>){
             # We have dec input
             # ... and we need to split the bytes
             $operand_byte_two = int $operand_byte/256;
+            $operand_byte_two = uc sprintf '%3d', $operand_byte_two;
             $operand_byte = $operand_byte - ($operand_byte_two * 256);
+            $operand_byte = uc sprintf '%3d', $operand_byte;
             if ($flg_upper){
               $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
               $operand_byte_two = uc sprintf '%02x', $operand_byte_two if $flg_hex;
@@ -1322,10 +1451,12 @@ while(<>){
             }
           #}      # redundant
           if ($category == 2 || $category == 7) {
-            $opcode = $baseOpCode{$mnemonic} + 8;
+            #$opcode = $baseOpCode{$mnemonic} + 8;
+            $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 8;
             $timing = $cycles{$mnemonic} + 1;
           } elsif ($category == 1 || $category == 3 || $category == 4 || $category == 5) {
-            $opcode = $baseOpCode{$mnemonic} + 12;
+            #$opcode = $baseOpCode{$mnemonic} + 12;
+            $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic} + 12;
             if ($category == 1) {
               $timing = $cycles{$mnemonic} - 2;
             } elsif ($category == 3) {
@@ -1334,7 +1465,8 @@ while(<>){
               $timing = $cycles{$mnemonic} + 2;
             }
           } elsif ($category == 6 || $category == 9) {
-            $opcode = $baseOpCode{$mnemonic};
+            #$opcode = $baseOpCode{$mnemonic};
+            $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
             $timing = $cycles{$mnemonic};
           } else {
             die "No!";
@@ -1358,17 +1490,26 @@ while(<>){
         }
         $num_bytes = 2;
         $operand_byte = $number;
-        $opcode = $baseOpCode{$mnemonic};
+        $operand_byte = uc sprintf '%3d', $operand_byte;
+        #$opcode = $baseOpCode{$mnemonic};
+        $opcode = uc sprintf '%3d', $baseOpCode{$mnemonic};
         $timing = $cycles{$mnemonic};
         opcode2casehex();
         #$operand_byte =~ s/^\$(.+)/$1/;      # Strip $ from hex input
-        if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input
+        #if ($operand_byte !~ s/^\$(.+)/$1/) {      # Strip $ from hex input - redundant
+
+        if ($operand_byte =~ s/^\$(.+)/$1/){
+          $operand_byte = hex $operand_byte;  # convert to decimal
+                              # this makes the hex stuff below redundant
+        }
+        $operand_byte = uc sprintf '%3d', $operand_byte;
+
           if ($flg_upper){
             $operand_byte = uc sprintf '%02x', $operand_byte if $flg_hex;
           } else {
             $operand_byte = lc sprintf '%02x', $operand_byte if $flg_hex;
           }
-        }
+        #} # redundant
         #print "$opcode $operand_byte\n";
         print "$opcode $operand_byte";
         if ($flg_quiet) { print "\n";}
